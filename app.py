@@ -533,7 +533,59 @@ with tabs[5]:
     rep += "## Efectismo\n\n"
     rep += f"- Adjetivos: {len(adjs)} ({dens_adj * 100:.1f}%)\n"
     rep += f"- Adverbios -mente: {len(advs)}\n"
+# ---- Tab 7 (Nueva) ----
+with tabs[6]:
+    st.header("🖼️ Imaginismo (La imagen concreta)")
+    st.caption("Di Marco, siguiendo a Ezra Pound, busca la 'imagen concreta y potente' rodeada de prosa. Lo abstracto debilita; lo sensorial fortalece.")
 
+    # Lista básica de abstracciones comunes (se puede ampliar)
+    abstractos = ["amor", "odio", "tristeza", "alegría", "belleza", "fealdad", "miedo", "valor", "libertad", "justicia", "verdad", "mentira", "paz", "guerra", "dolor", "placer"]
+    
+    # Lista de verbos sensoriales (vista, oído, olfato, gusto, tacto)
+    sensoriales = ["ver", "mirar", "observar", "oír", "escuchar", "oler", "gustar", "tocar", "sentir", "palpar"]
+
+    hallazgos_abstractos = []
+    hallazgos_sensoriales = []
+
+    for token in a["doc"]:
+        if token.lemma_.lower() in abstractos:
+            # Extraer contexto
+            start = max(0, token.i - 5)
+            end = min(len(a["doc"]), token.i + 6)
+            contexto = a["doc"][start:end].text
+            hallazgos_abstractos.append({"palabra": token.text, "contexto": contexto})
+        
+        if token.lemma_.lower() in sensoriales and token.pos_ == "VERB":
+            hallazgos_sensoriales.append(token.text)
+
+    st.subheader("Abstracciones detectadas")
+    st.caption("Los conceptos abstractos son 'contar'. Si usas 'amor', intenta mostrar el gesto concreto que lo demuestra.")
+    if hallazgos_abstractos:
+        for h in hallazgos_abstractos[:10]:
+            st.warning(f"**'{h['palabra']}'** en contexto: > …{h['contexto']}…")
+    else:
+        st.success("✅ Sin abstracciones comunes en el texto.")
+
+    st.divider()
+    
+    st.subheader("Verbos de percepción sensorial")
+    st.caption("Un texto con 'imágenes potentes' suele apoyarse en lo que los personajes ven, oyen o tocan.")
+    st.write(f"Se detectaron **{len(hallazgos_sensoriales)}** verbos sensoriales.")
+    if len(hallazgos_sensoriales) < 3:
+        st.warning("🟡 **Pocos anclajes sensoriales.** El texto puede estar flotando en lo abstracto o en lo puramente mental.")
+    else:
+        st.info("💡 **Di Marco:** 'Va a buscar precisión y belleza, al mismo tiempo'. Asegúrate de que esos verbos estén conectados a una imagen que el lector pueda ver.")
+
+    st.divider()
+    
+    st.subheader("Reflexión final (Modo Taller)")
+    st.info("""
+    **El criterio de Di Marco:** 
+    "El efecto es lo que nosotros como escritores deseamos transmitir al lector de una manera clara y concisa, sin rebabas; y el efectismo es la sobreabundancia de descripciones... que paradójicamente hacen que el efecto pierda efecto." 
+    
+    *Pregúntate: ¿Esta imagen concreta acerca al lector al efecto que busco, o solo está adornando?*
+    """)
+    
     st.markdown(rep)
     st.download_button(
         "📥 Descargar reporte (.md)",
