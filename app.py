@@ -63,12 +63,10 @@ EXPLICATIVOS = [
 def analizar(texto):
     doc = nlp(texto)
     ors = list(doc.sents)
-    # Mejora de párrafos: detecta si hay doble salto o simple
     parrs = [p.strip() for p in texto.split("\n\n") if p.strip()]
-    if len(parrs) < 3: # Si hay pocos, forzamos corte por salto simple
+    if len(parrs) < 3:
         parrs = [p.strip() for p in texto.split("\n") if p.strip()]
     return {"doc": doc, "oraciones": ors, "parrafos": parrs, "texto": texto}
-
 
 def metricas_basicas(a):
     ors = a["oraciones"]
@@ -87,12 +85,10 @@ def metricas_basicas(a):
         "riqueza": len(set(lemas)) / len(lemas) if lemas else 0,
     }
 
-
 def detectar_dialogo(texto):
     lineas = texto.split("\n")
     con_d = [l for l in lineas if re.match(r"^\s*[—–\-]", l.strip())]
     return len(con_d), len(lineas)
-
 
 def detectar_filtros(a):
     hallazgos = []
@@ -109,14 +105,11 @@ def detectar_filtros(a):
                 break
     return hallazgos
 
-
 def detectar_adverbios_mente(a):
     return [t for t in a["doc"] if t.text.lower().endswith("mente") and t.pos_ == "ADV"]
 
-
 def detectar_adjetivos(a):
     return [t for t in a["doc"] if t.pos_ == "ADJ"]
-
 
 def detectar_ecos(a, ventana=60, min_ap=3):
     grupos = defaultdict(list)
@@ -133,11 +126,9 @@ def detectar_ecos(a, ventana=60, min_ap=3):
                     break
     return sorted(ecos, key=lambda x: -x["n"])
 
-
 def detectar_rimas(a, ventana=15):
     palabras = [(t.text.lower(), t.i) for t in a["doc"] if t.is_alpha and len(t.text) >= 4]
     rimas = []
-    # Excluimos sufijos morfológicos comunes para no detectar "falsas rimas"
     sufijos_ignorar = ["ando", "iendo", "ado", "ido", "aba", "ía", "aron", "ieron", "amos", "emos", "imos", "ción", "sión", "mente"]
     
     for i, (w1, p1) in enumerate(palabras):
@@ -145,17 +136,14 @@ def detectar_rimas(a, ventana=15):
             if p2 - p1 > ventana:
                 break
             if w1[-3:] == w2[-3:] and w1 != w2:
-                # Si termina en un sufijo común, lo ignoramos
                 if any(w1.endswith(suf) for suf in sufijos_ignorar):
                     continue
                 rimas.append({"a": w1, "b": w2, "dist": p2 - p1})
     return rimas
 
-
 def detectar_cliches(texto):
     t_low = texto.lower()
     return [c for c in CLICHES if c in t_low]
-
 
 def detectar_pasivas(a):
     resultado = []
@@ -168,11 +156,9 @@ def detectar_pasivas(a):
                     break
     return resultado
 
-
 def detectar_explicativos(texto):
     t_low = texto.lower()
     return [e for e in EXPLICATIVOS if e in t_low]
-
 
 def mapa_tension(a, n=12):
     ors = a["oraciones"]
@@ -202,18 +188,14 @@ def mapa_tension(a, n=12):
         })
     return segs
 
-
 def veredicto(a, metricas, segs):
     checks = []
-
-    # FILTRO DE PERSONAJES REFORZADO
     personas = set()
-    palabras_ignorar = ["dios", "basuras", "culpa", "vos", "sólo", "apagó", "sopló", "sonreíme", "metí", "nati"] # Lista negra básica
+    palabras_ignorar = ["dios", "basuras", "culpa", "vos", "sólo", "apagó", "sopló", "sonreíme", "metí", "nati", "chenille"]
     
     for e in a["doc"].ents:
         if e.label_ == "PER":
             texto_ent = e.text.strip()
-            # Solo aceptamos si tiene al menos una palabra con mayúscula inicial, NO es verbo, y NO está en la lista negra
             if texto_ent.lower() not in palabras_ignorar:
                 if any(t.pos_ == "PROPN" and t.text[0].isupper() for t in e) and not any(t.pos_ == "VERB" for t in e):
                     personas.add(texto_ent)
@@ -302,6 +284,8 @@ if not texto or len(texto.split()) < 30:
         **🎭 Efectismo** — Adjetivos, adverbios en -mente, densidad descriptiva.
 
         **📝 Reporte** — Todo junto, descargable en Markdown.
+        
+        **🖼️ Imaginismo** — Detecta abstracciones y verbos sensoriales.
         """)
     st.stop()
 
@@ -324,10 +308,11 @@ cols[5].metric("Desvío", f"{metricas['desvio']:.1f}")
 
 st.divider()
 
+# --- AQUÍ ESTÁ EL ARREGLO: AGREGAMOS LA 7MA PESTAÑA A LA LISTA ---
 tabs = st.tabs(["🎯 ¿Hay cuento?", "📊 Ritmo y tensión", "🗡️ Santa Tijera",
-                "🔁 Ecos y rimas", "🎭 Efectismo", "📝 Reporte"])
+                "🔁 Ecos y rimas", "🎭 Efectismo", "📝 Reporte", "🖼️ Imaginismo"])
 
-# ---- Tab 1 ----
+# ---- Tab 0 ----
 with tabs[0]:
     st.header("🎯 ¿Hay cuento?")
     st.caption("Checklist heurística. No es veredicto: es mapa.")
@@ -347,7 +332,7 @@ with tabs[0]:
         with st.expander(f"{icon} **{c['nombre']}** — {c['detalle']}"):
             st.info(f"**Criterio Di Marco:** {c['di_marco']}")
 
-# ---- Tab 2 ----
+# ---- Tab 1 ----
 with tabs[1]:
     st.header("📊 Ritmo y tensión")
     st.subheader("Longitud de cada oración")
@@ -401,7 +386,7 @@ with tabs[1]:
                 st.caption(s["preview"])
                 st.write(f"Long. prom: {s['long_prom']:.1f} | Diálogo: {'sí' if s['tiene_dialogo'] else 'no'} | Filtros: {s['n_filt']}")
 
-# ---- Tab 3 ----
+# ---- Tab 2 ----
 with tabs[2]:
     st.header("🗡️ Santa Tijera")
     st.caption("Lo que Di Marco llamaría 'rebabas': lo que el lector puede inferir o diluye el efecto.")
@@ -452,7 +437,7 @@ with tabs[2]:
     else:
         st.success("✅ Sin marcadores.")
 
-# ---- Tab 4 ----
+# ---- Tab 3 ----
 with tabs[3]:
     st.header("🔁 Ecos y rimas no buscadas")
     ecos = detectar_ecos(a)
@@ -474,7 +459,7 @@ with tabs[3]:
     else:
         st.success("✅ Sin rimas accidentales.")
 
-# ---- Tab 5 ----
+# ---- Tab 4 ----
 with tabs[4]:
     st.header("🎭 Efectismo")
     st.caption("Di Marco: *'El efectismo es la sobreabundancia de adornos que hacen que el efecto pierda efecto.'*")
@@ -501,7 +486,7 @@ with tabs[4]:
     else:
         st.success("✅ Sin adverbios en -mente.")
 
-# ---- Tab 6 ----
+# ---- Tab 5 ----
 with tabs[5]:
     st.header("📝 Reporte completo")
     rep = "# Reporte Di Marco Informático\n\n"
@@ -533,15 +518,21 @@ with tabs[5]:
     rep += "## Efectismo\n\n"
     rep += f"- Adjetivos: {len(adjs)} ({dens_adj * 100:.1f}%)\n"
     rep += f"- Adverbios -mente: {len(advs)}\n"
-# ---- Tab 7 (Nueva) ----
+
+    st.markdown(rep)
+    st.download_button(
+        "📥 Descargar reporte (.md)",
+        rep,
+        file_name="reporte_dimarco.md",
+        mime="text/markdown",
+    )
+
+# ---- Tab 6 (Nueva) ----
 with tabs[6]:
     st.header("🖼️ Imaginismo (La imagen concreta)")
-    st.caption("Di Marco, siguiendo a Ezra Pound, busca la 'imagen concreta y potente' rodeada de prosa. Lo abstracto debilita; lo sensorial fortalece.")
+    st.caption("Di Marco, siguiendo a Ezra Pound, busca la 'imagen concreta y potente'. Lo abstracto debilita; lo sensorial fortalece.")
 
-    # Lista básica de abstracciones comunes (se puede ampliar)
-    abstractos = ["amor", "odio", "tristeza", "alegría", "belleza", "fealdad", "miedo", "valor", "libertad", "justicia", "verdad", "mentira", "paz", "guerra", "dolor", "placer"]
-    
-    # Lista de verbos sensoriales (vista, oído, olfato, gusto, tacto)
+    abstractos = ["amor", "odio", "tristeza", "alegría", "belleza", "fealdad", "miedo", "valor", "libertad", "justicia", "verdad", "mentira", "paz", "guerra", "dolor", "placer", "soledad", "angustia", "felicidad", "esperanza"]
     sensoriales = ["ver", "mirar", "observar", "oír", "escuchar", "oler", "gustar", "tocar", "sentir", "palpar"]
 
     hallazgos_abstractos = []
@@ -549,7 +540,6 @@ with tabs[6]:
 
     for token in a["doc"]:
         if token.lemma_.lower() in abstractos:
-            # Extraer contexto
             start = max(0, token.i - 5)
             end = min(len(a["doc"]), token.i + 6)
             contexto = a["doc"][start:end].text
@@ -563,8 +553,10 @@ with tabs[6]:
     if hallazgos_abstractos:
         for h in hallazgos_abstractos[:10]:
             st.warning(f"**'{h['palabra']}'** en contexto: > …{h['contexto']}…")
+        if len(hallazgos_abstractos) > 10:
+            st.caption(f"...y {len(hallazgos_abstractos) - 10} más.")
     else:
-        st.success("✅ Sin abstracciones comunes en el texto.")
+        st.success("✅ Sin abstracciones comunes en el texto. ¡Buen trabajo!")
 
     st.divider()
     
@@ -585,11 +577,3 @@ with tabs[6]:
     
     *Pregúntate: ¿Esta imagen concreta acerca al lector al efecto que busco, o solo está adornando?*
     """)
-    
-    st.markdown(rep)
-    st.download_button(
-        "📥 Descargar reporte (.md)",
-        rep,
-        file_name="reporte_dimarco.md",
-        mime="text/markdown",
-    )
