@@ -199,7 +199,18 @@ def mapa_tension(a, n=12):
 def veredicto(a, metricas, segs):
     checks = []
 
-    personas = set(e.text for e in a["doc"].ents if e.label_ == "PER")
+    # FILTRO CORREGIDO: Solo acepta sustantivos propios y descarta ruidos comunes
+    personas = set()
+    for e in a["doc"].ents:
+        if e.label_ == "PER":
+            # Verificamos que al menos una palabra sea un sustantivo propio (PROPN)
+            if any(t.pos_ == "PROPN" for t in e):
+                # Filtramos falsos positivos frecuentes del modelo
+                if e.text.lower() not in ["dios", "basuras", "culpa", "meti", "nati"]:
+                    personas.add(e.text)
+    # "Nati" lo dejé fuera porque suele confundir al modelo en minúscula, pero si querés que aparezca como personaje,
+    # quitá "nati" de la lista de arriba.
+
     checks.append({
         "nombre": "Personajes identificables",
         "ok": len(personas) >= 2,
