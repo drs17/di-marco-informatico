@@ -1,4 +1,4 @@
-streamlit>=1.30
-spacy>=3.7.0
-https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.7.0/es_core_news_sm-3.7.0-py3-none-any.whl
-matplotlib>=3.7.0
+streamlit==1.36.0
+spacy==3.7.5
+matplotlib==3.9.0
+https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.7.5/es_core_news_sm-3.7.5-py3-none-any.whl
