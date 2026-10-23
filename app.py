@@ -63,8 +63,9 @@ EXPLICATIVOS = [
 def analizar(texto):
     doc = nlp(texto)
     ors = list(doc.sents)
+    # Mejora de párrafos: detecta si hay doble salto o simple
     parrs = [p.strip() for p in texto.split("\n\n") if p.strip()]
-    if not parrs:
+    if len(parrs) < 3: # Si hay pocos, forzamos corte por salto simple
         parrs = [p.strip() for p in texto.split("\n") if p.strip()]
     return {"doc": doc, "oraciones": ors, "parrafos": parrs, "texto": texto}
 
@@ -136,11 +137,17 @@ def detectar_ecos(a, ventana=60, min_ap=3):
 def detectar_rimas(a, ventana=15):
     palabras = [(t.text.lower(), t.i) for t in a["doc"] if t.is_alpha and len(t.text) >= 4]
     rimas = []
+    # Excluimos sufijos morfológicos comunes para no detectar "falsas rimas"
+    sufijos_ignorar = ["ando", "iendo", "ado", "ido", "aba", "ía", "aron", "ieron", "amos", "emos", "imos", "ción", "sión", "mente"]
+    
     for i, (w1, p1) in enumerate(palabras):
         for w2, p2 in palabras[i + 1:i + 10]:
             if p2 - p1 > ventana:
                 break
             if w1[-3:] == w2[-3:] and w1 != w2:
+                # Si termina en un sufijo común, lo ignoramos
+                if any(w1.endswith(suf) for suf in sufijos_ignorar):
+                    continue
                 rimas.append({"a": w1, "b": w2, "dist": p2 - p1})
     return rimas
 
@@ -199,17 +206,17 @@ def mapa_tension(a, n=12):
 def veredicto(a, metricas, segs):
     checks = []
 
-    # FILTRO CORREGIDO: Solo acepta sustantivos propios y descarta ruidos comunes
+    # FILTRO DE PERSONAJES REFORZADO
     personas = set()
+    palabras_ignorar = ["dios", "basuras", "culpa", "vos", "sólo", "apagó", "sopló", "sonreíme", "metí", "nati"] # Lista negra básica
+    
     for e in a["doc"].ents:
         if e.label_ == "PER":
-            # Verificamos que al menos una palabra sea un sustantivo propio (PROPN)
-            if any(t.pos_ == "PROPN" for t in e):
-                # Filtramos falsos positivos frecuentes del modelo
-                if e.text.lower() not in ["dios", "basuras", "culpa", "meti", "nati"]:
-                    personas.add(e.text)
-    # "Nati" lo dejé fuera porque suele confundir al modelo en minúscula, pero si querés que aparezca como personaje,
-    # quitá "nati" de la lista de arriba.
+            texto_ent = e.text.strip()
+            # Solo aceptamos si tiene al menos una palabra con mayúscula inicial, NO es verbo, y NO está en la lista negra
+            if texto_ent.lower() not in palabras_ignorar:
+                if any(t.pos_ == "PROPN" and t.text[0].isupper() for t in e) and not any(t.pos_ == "VERB" for t in e):
+                    personas.add(texto_ent)
 
     checks.append({
         "nombre": "Personajes identificables",
